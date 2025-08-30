@@ -1,25 +1,69 @@
-import logo from './logo.svg';
-import './App.css';
+import { useEffect, useState } from "react";
 
-function App() {
+export default function App() {
+  const apiKey = "ba608fc197984b34b4a175138253008";
+  const apiadd =
+    "https://api.geoapify.com/v1/geocode/autocomplete?text=Mosc&apiKey=ca4aa98b402f451aa2a2aec1a218b009";
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
+    <>
+      <header>
+        <Search />
       </header>
+    </>
+  );
+}
+function Search() {
+  const [query, setQuery] = useState("");
+
+  const [results, setResults] = useState([]);
+
+  useEffect(() => {
+    if (!query) {
+      setResults([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://api.geoapify.com/v1/geocode/autocomplete?text=${query}&types=city&apiKey=ca4aa98b402f451aa2a2aec1a218b009`
+        );
+        const data = await res.json();
+        setResults(data.features || []);
+      } catch (err) {
+        console.error(err);
+      }
+    }, 300); // wait 300ms
+
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  return (
+    <div className="search">
+      <div className="search-bar">
+        <input
+          className="search-bar__input"
+          placeholder="type name of city"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+
+        <button className="search-bar__btn">search</button>
+      </div>
+      <div className="toolBarContainer">
+        <SearchBar results={results} />
+      </div>
     </div>
   );
 }
 
-export default App;
+function SearchBar({ results }) {
+  return (
+    <ul className="results-list">
+      {results.map((item) => (
+        <li key={item.properties.place_id}>{item.properties.formatted}</li>
+      ))}
+    </ul>
+  );
+}
