@@ -2,7 +2,32 @@ import { useEffect, useRef, useState } from "react";
 
 export default function App() {
   const [selectedCity, setSelectedCity] = useState("");
-
+  useEffect(() => {
+    // Try geolocation on first mount
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          try {
+            // Reverse geocode coords -> city name (using Geoapify)
+            const res = await fetch(
+              `https://api.geoapify.com/v1/geocode/reverse?lat=${latitude}&lon=${longitude}&apiKey=ca4aa98b402f451aa2a2aec1a218b009`
+            );
+            const data = await res.json();
+            const city =
+              data.features[0]?.properties.city ||
+              data.features[0]?.properties.formatted;
+            if (city) setSelectedCity(city);
+          } catch (err) {
+            console.error("Error fetching reverse geocode:", err);
+          }
+        },
+        (err) => {
+          console.warn("Geolocation denied or unavailable:", err.message);
+        }
+      );
+    }
+  }, []);
   const handleSelectCity = (cityName) => {
     setSelectedCity(cityName);
   };
