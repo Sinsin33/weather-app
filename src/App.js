@@ -2,13 +2,11 @@ import { useEffect, useRef, useState } from "react";
 
 export default function App() {
   const [selectedCity, setSelectedCity] = useState("");
-  const apiKey = "ba608fc197984b34b4a175138253008";
-  const apiadd =
-    "https://api.geoapify.com/v1/geocode/autocomplete?text=Mosc&apiKey=ca4aa98b402f451aa2a2aec1a218b009";
 
-  const handleSelectCity = function (cityName) {
-    setSelectedCity(() => cityName);
+  const handleSelectCity = (cityName) => {
+    setSelectedCity(cityName);
   };
+
   return (
     <>
       <header>
@@ -20,14 +18,15 @@ export default function App() {
     </>
   );
 }
+
 function Search({ onSelectCity }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
-  const [hoveredIndex, setHoveredIndex] = useState(-1);
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef(null);
 
+  // 🔹 Fetch cities
   useEffect(() => {
     if (!query) {
       setResults([]);
@@ -41,6 +40,7 @@ function Search({ onSelectCity }) {
         );
         const data = await res.json();
         setResults(data.features || []);
+        setHighlightedIndex(-1);
       } catch (err) {
         console.error(err);
       }
@@ -49,6 +49,7 @@ function Search({ onSelectCity }) {
     return () => clearTimeout(timer);
   }, [query]);
 
+  // 🔹 Close dropdown on outside click
   useEffect(() => {
     function handleClickOutside(e) {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
@@ -64,14 +65,8 @@ function Search({ onSelectCity }) {
     setQuery(cityName);
     setResults([]);
     setHighlightedIndex(-1);
-    setHoveredIndex(-1);
     setIsOpen(false);
   };
-
-  const displayValue =
-    hoveredIndex >= 0 && hoveredIndex < results.length
-      ? results[hoveredIndex].properties.city
-      : query;
 
   return (
     <div className="search" ref={wrapperRef}>
@@ -79,34 +74,31 @@ function Search({ onSelectCity }) {
         <input
           className="search-bar__input"
           placeholder="Type name of city"
-          value={displayValue}
+          value={query}
           onFocus={() => setIsOpen(true)}
           onChange={(e) => {
             setQuery(e.target.value);
-            setHighlightedIndex(-1);
-            setHoveredIndex(-1);
             setIsOpen(true);
           }}
           onKeyDown={(e) => {
             if (e.key === "ArrowDown") {
               e.preventDefault();
               setHighlightedIndex((prev) =>
-                prev < results.length - 1 ? prev + 1 : prev
-              );
-              setHoveredIndex((prev) =>
-                prev < results.length - 1 ? prev + 1 : prev
+                prev < results.length - 1 ? prev + 1 : 0
               );
             }
             if (e.key === "ArrowUp") {
               e.preventDefault();
-              setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : prev));
-              setHoveredIndex((prev) => (prev > 0 ? prev - 1 : prev));
+              setHighlightedIndex((prev) =>
+                prev > 0 ? prev - 1 : results.length - 1
+              );
             }
             if (e.key === "Enter") {
               e.preventDefault();
               const selected =
                 results[highlightedIndex] &&
-                results[highlightedIndex].properties.city;
+                (results[highlightedIndex].properties.city ||
+                  results[highlightedIndex].properties.formatted);
               if (selected) handleSelect(selected);
             }
           }}
@@ -123,35 +115,27 @@ function Search({ onSelectCity }) {
         <SearchBar
           results={results}
           highlightedIndex={highlightedIndex}
-          hoveredIndex={hoveredIndex}
           onSelectCity={handleSelect}
-          onHover={(index) => setHoveredIndex(index)}
-          onLeave={() => setHoveredIndex(-1)}
+          onHover={(index) => setHighlightedIndex(index)}
         />
       )}
     </div>
   );
 }
 
-function SearchBar({
-  results,
-  onSelectCity,
-  onHover,
-  onLeave,
-  highlightedIndex,
-  hoveredIndex,
-}) {
+function SearchBar({ results, onSelectCity, onHover, highlightedIndex }) {
   return (
     <ul className="results-list">
       {results.map((item, i) => {
-        const isHighlighted = i === highlightedIndex || i === hoveredIndex;
+        const isHighlighted = i === highlightedIndex;
         return (
           <li
             key={item.properties.place_id}
             className={isHighlighted ? "highlighted" : ""}
-            onClick={() => onSelectCity(item.properties.city)}
+            onClick={() =>
+              onSelectCity(item.properties.city || item.properties.formatted)
+            }
             onMouseEnter={() => onHover(i)}
-            onMouseLeave={onLeave}
           >
             {item.properties.formatted}
           </li>
@@ -185,7 +169,7 @@ function Main({ selectedCity }) {
   if (!weather) {
     return (
       <div className="main">
-        <span class="loader"></span>
+        <span className="loader"></span>
       </div>
     );
   }
